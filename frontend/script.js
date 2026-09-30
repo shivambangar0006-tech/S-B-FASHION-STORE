@@ -1,4 +1,4 @@
-nst API_URL = "https://s-b-fashion-store.onrender.com/api/products";
+const API_URL = "https://s-b-fashion-store.onrender.com/api/products";
 
 let products = [];
 let cart = 0;
@@ -19,11 +19,15 @@ function getIcon(category) {
 function card(p) {
   const price = p.sale_price || p.price;
 
+  const productImage = p.image_url
+    ? `<img src="${p.image_url}" alt="${p.name}" loading="lazy">`
+    : `<span>${getIcon(p.category)}</span>`;
+
   return `<article class="product-card">
     <button class="heart" onclick="wishlist('${p.name}')">♡</button>
 
     <div class="product-image">
-      <span>${getIcon(p.category)}</span>
+      ${productImage}
     </div>
 
     <div class="product-info">
