@@ -16,39 +16,86 @@ function getIcon(category) {
   return icons[category] || "🛍️";
 }
 
+function getImageUrl(imageUrl, category) {
+  if (!imageUrl) {
+    return "";
+  }
+
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    return imageUrl;
+  }
+
+  return imageUrl.startsWith("/")
+    ? imageUrl
+    : "/" + imageUrl;
+}
+
 function card(p) {
-  const price = p.sale_price || p.price;
+  const price = p.sale_price !== null && p.sale_price !== undefined
+    ? p.sale_price
+    : p.price;
 
-  const productImage = p.image_url
-    ? `<img src="${p.image_url}" alt="${p.name}" loading="lazy">`
-    : `<span>${getIcon(p.category)}</span>`;
+  const imageUrl = getImageUrl(p.image_url, p.category);
 
-  return `<article class="product-card">
-    <button class="heart" onclick="wishlist('${p.name}')">♡</button>
+  return `
+    <article class="product-card">
 
-    <div class="product-image">
-      ${productImage}
-    </div>
+      <button
+        class="heart"
+        onclick="wishlist('${p.name.replace(/'/g, "\\'")}')"
+        aria-label="Add ${p.name} to wishlist"
+      >
+        ♡
+      </button>
 
-    <div class="product-info">
-      <h3>${p.name}</h3>
+      <div class="product-image">
 
-      <div class="product-meta">
-        <span>${p.category}</span>
-        <strong>${money(price)}</strong>
+        ${
+          imageUrl
+            ? `
+              <img
+                src="${imageUrl}"
+                alt="${p.name}"
+                loading="lazy"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+              >
+              <span style="display:none;">${getIcon(p.category)}</span>
+            `
+            : `
+              <span>${getIcon(p.category)}</span>
+            `
+        }
+
       </div>
 
-      <button class="btn btn-dark" onclick="addToCart('${p.name}')">
-        Add to bag
-      </button>
-    </div>
-  </article>`;
+      <div class="product-info">
+
+        <h3>${p.name}</h3>
+
+        <div class="product-meta">
+          <span>${p.category}</span>
+          <strong>${money(price)}</strong>
+        </div>
+
+        <button
+          class="btn btn-dark"
+          onclick="addToCart('${p.name.replace(/'/g, "\\'")}')"
+        >
+          Add to bag
+        </button>
+
+      </div>
+
+    </article>
+  `;
 }
 
 function render(list, target) {
   const element = document.getElementById(target);
 
-  if (!element) return;
+  if (!element) {
+    return;
+  }
 
   element.innerHTML = list.map(card).join("");
 }
@@ -75,61 +122,119 @@ async function loadProducts() {
   }
 }
 
-loadProducts();
+function setupCategoryFilter() {
+  const categoryFilter = document.getElementById("categoryFilter");
 
-document.getElementById("categoryFilter").addEventListener("change", e => {
-  const value = e.target.value;
+  if (!categoryFilter) {
+    return;
+  }
 
-  render(
-    value === "All"
-      ? products
-      : products.filter(p => p.category === value),
-    "shopGrid"
-  );
-});
+  categoryFilter.addEventListener("change", event => {
+    const value = event.target.value;
 
-document.getElementById("searchBtn").onclick = () => {
-  document.getElementById("searchPanel").classList.add("open");
-  document.getElementById("searchInput").focus();
-};
+    const filteredProducts =
+      value === "All"
+        ? products
+        : products.filter(product => product.category === value);
 
-document.getElementById("closeSearch").onclick = () => {
-  document.getElementById("searchPanel").classList.remove("open");
-};
+    render(filteredProducts, "shopGrid");
+  });
+}
 
-document.getElementById("searchInput").addEventListener("input", e => {
-  const q = e.target.value.toLowerCase().trim();
+function setupSearch() {
+  const searchBtn = document.getElementById("searchBtn");
+  const closeSearch = document.getElementById("closeSearch");
+  const searchInput = document.getElementById("searchInput");
+  const searchPanel = document.getElementById("searchPanel");
 
-  render(
-    products.filter(p =>
-      (p.name + " " + p.category + " " + (p.description || ""))
-        .toLowerCase()
-        .includes(q)
-    ),
-    "shopGrid"
-  );
-});
+  if (searchBtn && searchPanel && searchInput) {
+    searchBtn.onclick = () => {
+      searchPanel.classList.add("open");
+      searchInput.focus();
+    };
+  }
 
-document.getElementById("cartBtn").onclick = () => {
-  toast(
-    cart
-      ? `Your bag has ${cart} item${cart > 1 ? "s" : ""}.`
-      : "Your bag is empty — add a product first."
-  );
-};
+  if (closeSearch && searchPanel) {
+    closeSearch.onclick = () => {
+      searchPanel.classList.remove("open");
+    };
+  }
 
-document.getElementById("wishlistBtn").onclick = () => {
-  toast("Wishlist UI is ready; account storage will be connected later.");
-};
+  if (searchInput) {
+    searchInput.addEventListener("input", event => {
+      const query = event.target.value.toLowerCase().trim();
 
-document.getElementById("lookBtn").onclick = () => {
-  toast("Build Your Look will be connected to outfit selection in the next frontend stage.");
-};
+      const filteredProducts = products.filter(product =>
+        (
+          product.name +
+          " " +
+          product.category +
+          " " +
+          (product.description || "")
+        )
+          .toLowerCase()
+          .includes(query)
+      );
+
+      render(filteredProducts, "shopGrid");
+    });
+  }
+}
+
+function setupCart() {
+  const cartBtn = document.getElementById("cartBtn");
+
+  if (!cartBtn) {
+    return;
+  }
+
+  cartBtn.onclick = () => {
+    if (cart > 0) {
+      toast(
+        `Your bag has ${cart} item${cart > 1 ? "s" : ""}.`
+      );
+    } else {
+      toast("Your bag is empty — add a product first.");
+    }
+  };
+}
+
+function setupWishlist() {
+  const wishlistBtn = document.getElementById("wishlistBtn");
+
+  if (!wishlistBtn) {
+    return;
+  }
+
+  wishlistBtn.onclick = () => {
+    toast(
+      "Wishlist UI is ready; account storage will be connected later."
+    );
+  };
+}
+
+function setupBuildYourLook() {
+  const lookBtn = document.getElementById("lookBtn");
+
+  if (!lookBtn) {
+    return;
+  }
+
+  lookBtn.onclick = () => {
+    toast(
+      "Build Your Look will be connected to outfit selection in the next frontend stage."
+    );
+  };
+}
 
 function addToCart(name) {
   cart++;
 
-  document.getElementById("cartCount").textContent = cart;
+  const cartCount = document.getElementById("cartCount");
+
+  if (cartCount) {
+    cartCount.textContent = cart;
+  }
 
   toast(`${name} added to your bag.`);
 }
@@ -139,16 +244,26 @@ function wishlist(name) {
 }
 
 function toast(message) {
-  const el = document.getElementById("toast");
+  const element = document.getElementById("toast");
 
-  if (!el) return;
+  if (!element) {
+    return;
+  }
 
-  el.textContent = message;
-  el.classList.add("show");
+  element.textContent = message;
+  element.classList.add("show");
 
   clearTimeout(window.toastTimer);
 
   window.toastTimer = setTimeout(() => {
-    el.classList.remove("show");
+    element.classList.remove("show");
   }, 2200);
 }
+
+setupCategoryFilter();
+setupSearch();
+setupCart();
+setupWishlist();
+setupBuildYourLook();
+
+loadProducts();
