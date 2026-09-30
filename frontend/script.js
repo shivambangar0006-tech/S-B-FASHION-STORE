@@ -1,4 +1,4 @@
-const API_URL = "https://s-b-fashion-store.onrender.com/api/products";
+nst API_URL = "https://s-b-fashion-store.onrender.com/api/products";
 
 let products = [];
 let cart = 0;
